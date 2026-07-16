@@ -1,0 +1,52 @@
+people:
+  - id: maria.gomez
+    name: "María Gómez"
+    role: "Staff Engineer"
+    team: platform
+    email: maria.gomez@company.com
+    slack: "@maria"
+    expertise: ["architecture", "kubernetes", "deployment", "on-call", "incident response"]
+    onboarding_buddy: true
+    timezone: "America/Mexico_City"
+  - id: james.lee
+    name: "James Lee"
+    role: "Engineering Manager"
+    team: platform
+    email: james.lee@company.com
+    slack: "@jlee"
+    expertise: ["career growth", "planning", "team processes", "sprint planning"]
+    timezone: "America/Los_Angeles"
+  - id: sofia.ruiz
+    name: "Sofía Ruiz"
+    role: "Senior Product Manager"
+    team: product
+    email: sofia.ruiz@company.com
+    slack: "@sofia"
+    expertise: ["roadmap", "customer research", "metrics", "strategy", "spec writing"]
+    onboarding_buddy: true
+    timezone: "America/Mexico_City"
+  - id: dev.patel
+    name: "Dev Patel"
+    role: "Security Engineer"
+    team: security
+    email: dev.patel@company.com
+    slack: "@devp"
+    expertise: ["security training", "access control", "compliance", "vpn", "accounts"]
+    timezone: "Europe/London"
+  - id: ana.torres
+    name: "Ana Torres"
+    role: "People Ops Partner"
+    team: people
+    email: ana.torres@company.com
+    slack: "@anat"
+    expertise: ["onboarding", "benefits", "hr", "payroll", "handbook"]
+    onboarding_buddy: true
+    timezone: "America/Mexico_City"
+  - id: leo.martins
+    name: "Leo Martins"
+    role: "Senior Frontend Engineer"
+    team: web
+    email: leo.martins@company.com
+    slack: "@leom"
+    expertise: ["frontend", "react", "design system", "code review", "development environment"]
+    timezone: "America/Sao_Paulo"

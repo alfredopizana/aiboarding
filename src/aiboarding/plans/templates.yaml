@@ -1,0 +1,152 @@
+# Role templates for 90-day success plans (SPEC-005 §3.4)
+# Each item: title, description, category, topic (used to match docs & people)
+roles:
+  engineer:
+    phase1:
+      - title: "Set up your development environment"
+        description: "Install tooling, clone key repos, run the main service locally."
+        category: learning
+        topic: "development environment setup repository"
+      - title: "Read the architecture overview"
+        description: "Understand system components, data flow, and deployment model."
+        category: learning
+        topic: "architecture system design"
+      - title: "Meet your onboarding buddy and teammates"
+        description: "Schedule 1:1s with your buddy, manager, and each teammate."
+        category: relationships
+        topic: "onboarding buddy team"
+      - title: "Understand the on-call and incident process"
+        description: "Read the runbook and shadow one incident review."
+        category: process
+        topic: "on-call incident runbook"
+      - title: "Ship a starter task"
+        description: "Pick a good-first-issue and take it through the full PR cycle."
+        category: delivery
+        topic: "code review pull request process"
+    phase2:
+      - title: "Own a small feature end to end"
+        description: "Design, implement, test, and release with light supervision."
+        category: delivery
+        topic: "feature development release"
+      - title: "Meet cross-team partners"
+        description: "Connect with product, design, and platform contacts you depend on."
+        category: relationships
+        topic: "product platform design"
+      - title: "Deep-dive one core system"
+        description: "Become able to debug and explain one critical service."
+        category: learning
+        topic: "core service internals debugging"
+      - title: "Participate in team ceremonies actively"
+        description: "Contribute to planning, retro, and estimation with your own input."
+        category: process
+        topic: "sprint planning retro process"
+    phase3:
+      - title: "Deliver a meaningful project autonomously"
+        description: "Own a project with real user or business impact."
+        category: delivery
+        topic: "project delivery roadmap"
+      - title: "Join the on-call rotation"
+        description: "Take your first on-call shift with a backup buddy."
+        category: process
+        topic: "on-call rotation incident"
+      - title: "Propose one improvement"
+        description: "Identify friction (docs, tooling, process) and propose a fix."
+        category: delivery
+        topic: "developer experience improvement"
+      - title: "Give onboarding feedback"
+        description: "Document gaps you found so the next hire ramps faster."
+        category: process
+        topic: "onboarding feedback documentation"
+  product:
+    phase1:
+      - title: "Learn the product surface"
+        description: "Use the product daily; document confusions as fresh-eyes insights."
+        category: learning
+        topic: "product overview features"
+      - title: "Meet stakeholders"
+        description: "1:1s with engineering leads, design, sales, and support."
+        category: relationships
+        topic: "stakeholders engineering design sales"
+      - title: "Read strategy and roadmap docs"
+        description: "Understand current bets, metrics, and priorities."
+        category: learning
+        topic: "strategy roadmap metrics"
+      - title: "Shadow customer calls"
+        description: "Join at least 3 customer or support calls."
+        category: learning
+        topic: "customer support calls"
+    phase2:
+      - title: "Own a feature spec"
+        description: "Write and drive one spec through review with engineering."
+        category: delivery
+        topic: "spec requirements review"
+      - title: "Build your metrics dashboard"
+        description: "Track the KPIs for your area and review weekly."
+        category: process
+        topic: "metrics dashboard analytics"
+      - title: "Deepen customer empathy"
+        description: "Run user interviews; synthesize insights for the team."
+        category: relationships
+        topic: "user research interviews"
+    phase3:
+      - title: "Ship an impactful initiative"
+        description: "Lead one initiative from discovery to launch."
+        category: delivery
+        topic: "launch initiative discovery"
+      - title: "Present a roadmap proposal"
+        description: "Propose next-quarter priorities backed by data."
+        category: delivery
+        topic: "roadmap proposal planning"
+      - title: "Strengthen cross-functional rituals"
+        description: "Improve one recurring ritual (sync, review, planning)."
+        category: process
+        topic: "process rituals planning"
+  default:
+    phase1:
+      - title: "Complete company onboarding basics"
+        description: "HR paperwork, accounts, security training, tools access."
+        category: process
+        topic: "onboarding accounts security training"
+      - title: "Understand the company mission and org"
+        description: "Read the handbook; map who does what."
+        category: learning
+        topic: "company mission handbook organization"
+      - title: "Meet your team and buddy"
+        description: "1:1s with manager, buddy, and immediate teammates."
+        category: relationships
+        topic: "team buddy manager"
+      - title: "Learn your team's core workflows"
+        description: "Shadow teammates on the main recurring workflows."
+        category: learning
+        topic: "workflow process team"
+    phase2:
+      - title: "Contribute to team deliverables"
+        description: "Take ownership of tasks with support from your buddy."
+        category: delivery
+        topic: "deliverables tasks ownership"
+      - title: "Expand your internal network"
+        description: "Meet key partners outside your immediate team."
+        category: relationships
+        topic: "partners cross-team network"
+      - title: "Master the tools of your role"
+        description: "Become proficient in the systems your role depends on."
+        category: learning
+        topic: "tools systems role"
+    phase3:
+      - title: "Operate with autonomy"
+        description: "Own recurring responsibilities end to end."
+        category: delivery
+        topic: "responsibilities autonomy ownership"
+      - title: "Propose one improvement"
+        description: "Suggest a concrete improvement based on your fresh perspective."
+        category: delivery
+        topic: "improvement suggestion feedback"
+      - title: "Review your 90 days with your manager"
+        description: "Retro on wins, gaps, and goals for the next quarter."
+        category: process
+        topic: "review goals manager"
+
+phase_objectives:
+  phase1: "Learn the landscape and build your support network."
+  phase2: "Contribute with guidance and deepen your expertise."
+  phase3: "Deliver autonomously and start improving the system."
