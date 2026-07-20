@@ -18,7 +18,12 @@ from pydantic import BaseModel
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from aiboarding.models import SuccessPlan, UserProfile
-from aiboarding.persistence.tables import PlanItemRecord, PlanRecord, UserRecord
+from aiboarding.persistence.tables import (
+    ChatMessageRecord,
+    PlanItemRecord,
+    PlanRecord,
+    UserRecord,
+)
 
 
 # ── Return models (backend-agnostic) ────────────────────────────────────────
@@ -41,6 +46,14 @@ class StoredItem(BaseModel):
     suggested_contacts: list[str]
     suggested_docs: list[str]
     done: bool
+
+
+class StoredMessage(BaseModel):
+    id: int
+    role: str
+    content: str
+    thread_id: str = ""
+    created_at: datetime
 
 
 class StoredPlan(BaseModel):
@@ -83,6 +96,12 @@ class ProgressStore(ABC):
 
     @abstractmethod
     def set_item_done(self, item_id: int, done: bool) -> None: ...
+
+    @abstractmethod
+    def save_message(self, user_id: str, role: str, content: str, thread_id: str = "") -> None: ...
+
+    @abstractmethod
+    def get_history(self, user_id: str, limit: int = 100) -> list[StoredMessage]: ...
 
 
 # ── SQLite implementation ───────────────────────────────────────────────────
@@ -177,6 +196,34 @@ class SQLiteProgressStore(ProgressStore):
             item.done_at = datetime.now(timezone.utc) if done else None
             s.add(item)
             s.commit()
+
+    def save_message(self, user_id: str, role: str, content: str, thread_id: str = "") -> None:
+        with Session(self.engine) as s:
+            s.add(
+                ChatMessageRecord(
+                    user_id=user_id, role=role, content=content, thread_id=thread_id
+                )
+            )
+            s.commit()
+
+    def get_history(self, user_id: str, limit: int = 100) -> list[StoredMessage]:
+        with Session(self.engine) as s:
+            rows = s.exec(
+                select(ChatMessageRecord)
+                .where(ChatMessageRecord.user_id == user_id)
+                .order_by(ChatMessageRecord.id)
+                .limit(limit)
+            ).all()
+            return [
+                StoredMessage(
+                    id=r.id or 0,
+                    role=r.role,
+                    content=r.content,
+                    thread_id=r.thread_id,
+                    created_at=r.created_at,
+                )
+                for r in rows
+            ]
 
 
 def _to_user(rec: UserRecord) -> StoredUser:

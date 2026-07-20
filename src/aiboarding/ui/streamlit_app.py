@@ -167,6 +167,23 @@ with tab_chat:
     st.subheader("Pregúntale al asistente de onboarding")
     st.session_state.setdefault("messages", [])
 
+    # Identify the user (if email set) and load their persisted history once.
+    chat_email = current_email()
+    chat_user_id = None
+    if chat_email:
+        su = svc.progress.get_user(chat_email) or svc.progress.upsert_user(
+            current_user(), chat_email
+        )
+        chat_user_id = su.id
+        if st.session_state.get("history_email") != chat_email:
+            st.session_state["messages"] = [
+                {"role": m.role, "content": m.content}
+                for m in svc.progress.get_history(chat_user_id)
+            ]
+            st.session_state["history_email"] = chat_email
+    else:
+        st.caption("💡 Ingresa tu email en la barra lateral para guardar tu historial.")
+
     for msg in st.session_state["messages"]:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -189,12 +206,11 @@ with tab_chat:
                 answer = result.get("answer", "") or "_(sin respuesta)_"
                 citations = result.get("citations", [])
                 people = result.get("people_matches", [])
+                thread = result.get("thread_id", "")
                 st.markdown(answer)
                 render_citations(citations)
                 render_people(people)
-                st.caption(
-                    f"intent: `{result.get('intent', '—')}` · thread: `{result.get('thread_id', '—')}`"
-                )
+                st.caption(f"intent: `{result.get('intent', '—')}` · thread: `{thread or '—'}`")
                 st.session_state["messages"].append(
                     {
                         "role": "assistant",
@@ -203,9 +219,13 @@ with tab_chat:
                         "people": people,
                     }
                 )
+                if chat_user_id:  # persist the exchange for this user
+                    svc.progress.save_message(chat_user_id, "user", prompt, thread)
+                    svc.progress.save_message(chat_user_id, "assistant", answer, thread)
 
-    if st.session_state["messages"] and st.button("🗑️ Limpiar conversación"):
+    if st.session_state["messages"] and st.button("🗑️ Limpiar (solo esta vista)"):
         st.session_state["messages"] = []
+        st.session_state.pop("history_email", None)
         st.rerun()
 
 # ── Plan ─────────────────────────────────────────────────────────────────────

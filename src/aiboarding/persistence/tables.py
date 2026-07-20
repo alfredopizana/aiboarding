@@ -48,3 +48,14 @@ class PlanItemRecord(SQLModel, table=True):
     position: int = 0
     done: bool = False
     done_at: datetime | None = None
+
+
+class ChatMessageRecord(SQLModel, table=True):
+    __tablename__ = "chat_messages"
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    role: str = ""  # "user" | "assistant"
+    content: str = ""
+    thread_id: str = ""
+    created_at: datetime = Field(default_factory=_utcnow)

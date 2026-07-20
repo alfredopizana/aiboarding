@@ -72,6 +72,25 @@ def test_regenerate_deactivates_old_plan(store, generator):
     assert active.done_count == 0  # fresh plan, progress reset
 
 
+def test_conversation_history_roundtrip(store):
+    user = store.upsert_user(UserProfile(name="Ada", team="data"), "a@x.dev")
+    assert store.get_history(user.id) == []
+    store.save_message(user.id, "user", "how do I deploy?", thread_id="t1")
+    store.save_message(user.id, "assistant", "via the release train", thread_id="t1")
+    history = store.get_history(user.id)
+    assert [m.role for m in history] == ["user", "assistant"]
+    assert history[0].content == "how do I deploy?"
+    assert history[1].thread_id == "t1"
+
+
+def test_history_is_isolated_per_user(store):
+    a = store.upsert_user(UserProfile(name="A"), "a@x.dev")
+    b = store.upsert_user(UserProfile(name="B"), "b@x.dev")
+    store.save_message(a.id, "user", "hi from A")
+    assert len(store.get_history(a.id)) == 1
+    assert store.get_history(b.id) == []
+
+
 @pytest.mark.parametrize(
     "team,role,expected",
     [
