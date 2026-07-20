@@ -27,13 +27,18 @@ def _psycopg_url(url: str) -> str:
 class PgVectorStore:
     def __init__(self, url: str, embedder: Embedder):
         import numpy as np  # noqa: F401  (ensures the extra is installed)
+        import psycopg
 
         self.embedder = embedder
         self.url = _psycopg_url(url)
+        # Bootstrap: create the `vector` extension with a plain connection first —
+        # register_vector() below needs the type to already exist.
+        with psycopg.connect(self.url) as conn:
+            conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            conn.commit()
         # Determine embedding dimensionality from the active embedder.
         self._dim = len(embedder.embed(["dimension probe"])[0])
         with self._conn() as conn:
-            conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
             conn.execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS doc_chunks (
