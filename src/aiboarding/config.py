@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     langsmith_api_key: str = ""
     langsmith_project: str = "aiboarding"
 
+    # UI
+    show_audit_button: bool = True  # show a "Ver auditoría" button under chat answers
+
     # Confluence
     confluence_base_url: str = ""
     confluence_email: str = ""

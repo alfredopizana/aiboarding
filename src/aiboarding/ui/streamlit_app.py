@@ -74,6 +74,30 @@ def render_people(matches: list) -> None:
             )
 
 
+def render_audit(thread_id: str) -> None:
+    """Show the LangGraph trace (nodes, latency, sources) for one thread."""
+    events = svc.audit.read(thread_id)
+    with st.container(border=True):
+        st.caption(f"🔍 Traza de auditoría · `{thread_id}`")
+        if not events:
+            st.caption("Sin eventos para este thread.")
+            return
+        st.dataframe(
+            [
+                {
+                    "nodo": e.node,
+                    "status": e.status,
+                    "ms": round(e.latency_ms),
+                    "modelo": e.model or "—",
+                    "fuentes": len(e.sources),
+                }
+                for e in events
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config + sidebar
 # ─────────────────────────────────────────────────────────────────────────────
@@ -178,18 +202,28 @@ with tab_chat:
         chat_user_id = su.id
         if st.session_state.get("history_email") != chat_email:
             st.session_state["messages"] = [
-                {"role": m.role, "content": m.content}
+                {"role": m.role, "content": m.content, "thread": m.thread_id}
                 for m in svc.progress.get_history(chat_user_id)
             ]
             st.session_state["history_email"] = chat_email
     else:
         st.caption("💡 Ingresa tu email en la barra lateral para guardar tu historial.")
 
-    for msg in st.session_state["messages"]:
+    show_audit = svc.settings.show_audit_button
+    for i, msg in enumerate(st.session_state["messages"]):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             render_citations(msg.get("citations", []))
             render_people(msg.get("people", []))
+            if show_audit and msg["role"] == "assistant" and msg.get("thread"):
+                if st.button("🔍 Ver auditoría", key=f"auditbtn_{i}"):
+                    cur = st.session_state.get("audit_thread")
+                    st.session_state["audit_thread"] = (
+                        None if cur == msg["thread"] else msg["thread"]
+                    )
+                    st.rerun()
+                if st.session_state.get("audit_thread") == msg["thread"]:
+                    render_audit(msg["thread"])
 
     if prompt := st.chat_input("¿Cómo configuro mi entorno de desarrollo?"):
         st.session_state["messages"].append({"role": "user", "content": prompt})
@@ -218,11 +252,13 @@ with tab_chat:
                         "content": answer,
                         "citations": citations,
                         "people": people,
+                        "thread": thread,
                     }
                 )
                 if chat_user_id:  # persist the exchange for this user
                     svc.progress.save_message(chat_user_id, "user", prompt, thread)
                     svc.progress.save_message(chat_user_id, "assistant", answer, thread)
+                st.rerun()  # re-render via the loop so the audit button appears
 
     if st.session_state["messages"]:
         if chat_user_id:  # persisted history — offer a real delete with confirmation
