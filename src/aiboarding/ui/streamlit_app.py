@@ -105,6 +105,18 @@ st.set_page_config(page_title="AIboarding", page_icon="🚀", layout="wide")
 
 svc = get_services()
 
+# Optional password gate for shared/hosted deployments. Open when unset.
+if svc.settings.ui_password and not st.session_state.get("authed"):
+    st.title("🔒 AIboarding")
+    st.caption("Demo protegida — ingresa la contraseña para continuar.")
+    pw = st.text_input("Contraseña", type="password")
+    if pw and pw == svc.settings.ui_password:
+        st.session_state["authed"] = True
+        st.rerun()
+    elif pw:
+        st.error("Contraseña incorrecta.")
+    st.stop()
+
 with st.sidebar:
     st.title("🚀 AIboarding")
     st.caption(f"Asistente de onboarding · v{__version__}")

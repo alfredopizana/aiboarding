@@ -34,6 +34,7 @@ class Settings(BaseSettings):
 
     # UI
     show_audit_button: bool = True  # show a "Ver auditoría" button under chat answers
+    ui_password: str = ""  # if set, the Streamlit app requires this password (shared/hosted use)
 
     # Confluence
     confluence_base_url: str = ""

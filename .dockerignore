@@ -1,0 +1,21 @@
+# Never bake secrets or local state into the image
+.env
+credentials.json
+data/vectorstore/
+data/audit/
+data/aiboarding.db
+*.db
+*.db-wal
+*.db-shm
+
+# Dev cruft
+.venv/
+venv/
+.git/
+.github/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+tests/
