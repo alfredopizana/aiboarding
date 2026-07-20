@@ -145,6 +145,167 @@ roles:
         description: "Retro on wins, gaps, and goals for the next quarter."
         category: process
         topic: "review goals manager"
+  devops:
+    phase1:
+      - title: "Set up infra tooling and access"
+        description: "Get kubectl, Terraform, and cloud access; run the deploy pipeline locally."
+        category: learning
+        topic: "kubernetes terraform ci cd pipeline access"
+      - title: "Map the deployment and rollback flow"
+        description: "Trace a change from merge to production, including the release train and canary."
+        category: learning
+        topic: "deploy rollback release train canary"
+      - title: "Meet the on-call backbone"
+        description: "1:1s with platform and SRE teammates; learn who owns which system."
+        category: relationships
+        topic: "on-call platform sre ownership"
+      - title: "Read the DevOps runbook"
+        description: "Understand alerts, golden signals, error budgets, and the kill switch."
+        category: process
+        topic: "devops runbook alerts error budget observability"
+    phase2:
+      - title: "Own a pipeline or infra improvement"
+        description: "Ship a change to CI/CD, Terraform, or observability with review."
+        category: delivery
+        topic: "ci cd terraform observability improvement"
+      - title: "Shadow an incident as scribe"
+        description: "Join an incident and document the timeline and postmortem."
+        category: process
+        topic: "incident postmortem severity"
+      - title: "Deep-dive the alerting stack"
+        description: "Be able to explain and tune one critical alert and its SLO."
+        category: learning
+        topic: "alerting slo golden signals grafana"
+    phase3:
+      - title: "Join the on-call rotation"
+        description: "Take your first shift with a backup; handle a real page."
+        category: process
+        topic: "on-call rotation incident"
+      - title: "Lead a reliability improvement"
+        description: "Reduce toil or improve an SLO with a measurable project."
+        category: delivery
+        topic: "reliability toil slo project"
+  data:
+    phase1:
+      - title: "Set up the data stack"
+        description: "Access the warehouse, run a pipeline (DAG) locally, open the dashboards."
+        category: learning
+        topic: "warehouse pipeline dag dashboard access"
+      - title: "Learn the event and metrics model"
+        description: "Understand event tracking, core tables, and how metrics are defined."
+        category: learning
+        topic: "event tracking metrics tables definitions"
+      - title: "Meet data consumers"
+        description: "1:1s with product, analytics, and engineering stakeholders you serve."
+        category: relationships
+        topic: "product analytics stakeholders data"
+      - title: "Read the Data runbook"
+        description: "Learn pipeline ownership, the daily DAG, and data-quality alerts."
+        category: process
+        topic: "data runbook pipeline dag data quality"
+    phase2:
+      - title: "Own a pipeline or dashboard"
+        description: "Ship a data pipeline change or a dashboard with review."
+        category: delivery
+        topic: "pipeline dashboard experimentation"
+      - title: "Debug a red DAG"
+        description: "Diagnose and fix a failing pipeline; document the fix."
+        category: process
+        topic: "dag failure pipeline debugging"
+    phase3:
+      - title: "Deliver a data product"
+        description: "Own an experiment, model, or reporting initiative end to end."
+        category: delivery
+        topic: "experiment model reporting initiative"
+      - title: "Improve data quality or trust"
+        description: "Propose and ship one data-quality or documentation improvement."
+        category: delivery
+        topic: "data quality documentation improvement"
+  security:
+    phase1:
+      - title: "Set up security tooling and access"
+        description: "Get access to scanners, the vuln tracker, and access-control systems."
+        category: learning
+        topic: "security scanner vulnerability access control"
+      - title: "Learn the incident response process"
+        description: "Read the Security runbook; understand severities and the IC role."
+        category: process
+        topic: "incident response security severity commander"
+      - title: "Meet the response network"
+        description: "1:1s with platform, devops, and legal partners for incidents."
+        category: relationships
+        topic: "incident response platform devops legal"
+      - title: "Review access and compliance basics"
+        description: "Understand least-privilege, audit logging, and compliance scope."
+        category: learning
+        topic: "least privilege audit compliance access"
+    phase2:
+      - title: "Own a vulnerability triage cycle"
+        description: "Triage, prioritize, and drive fixes for a batch of findings."
+        category: delivery
+        topic: "vulnerability triage remediation"
+      - title: "Shadow a security incident"
+        description: "Join an incident as scribe; help write the postmortem."
+        category: process
+        topic: "security incident postmortem"
+    phase3:
+      - title: "Join the security on-call"
+        description: "Take a first shift with backup; handle a real alert."
+        category: process
+        topic: "security on-call rotation alert"
+      - title: "Lead a hardening initiative"
+        description: "Ship a measurable improvement to access, detection, or response."
+        category: delivery
+        topic: "hardening detection access improvement"
+  qa:
+    phase1:
+      - title: "Set up the test environment"
+        description: "Run the e2e suite locally; learn the money paths it covers."
+        category: learning
+        topic: "e2e test suite money paths environment"
+      - title: "Learn the release sign-off flow"
+        description: "Understand how QA gates the release train and triages bugs."
+        category: process
+        topic: "release sign-off bug triage severity"
+      - title: "Meet dev and product partners"
+        description: "1:1s with engineering leads and product for quality ownership."
+        category: relationships
+        topic: "engineering product quality ownership"
+      - title: "Read the QA runbook"
+        description: "Learn the test strategy, quarantine policy, and severity scale."
+        category: process
+        topic: "qa runbook test strategy quarantine severity"
+    phase2:
+      - title: "Own test coverage for a feature"
+        description: "Add e2e/integration coverage for one area; keep it green."
+        category: delivery
+        topic: "test coverage e2e integration"
+      - title: "Reduce flaky tests"
+        description: "Fix or quarantine flaky tests and document the pattern."
+        category: process
+        topic: "flaky test quarantine build health"
+    phase3:
+      - title: "Own release sign-off"
+        description: "Drive QA sign-off for a release with backup."
+        category: delivery
+        topic: "release sign-off quality gate"
+      - title: "Improve the test strategy"
+        description: "Propose one measurable improvement to coverage or speed."
+        category: delivery
+        topic: "test strategy coverage improvement"
+
+# Map a team id (from people.yaml) to the best-fit role template above.
+team_role_map:
+  platform: engineer
+  web: engineer
+  custom-eng: engineer
+  devops: devops
+  data: data
+  security: security
+  qa: qa
+  product: product
+  people: default
+  it: default
 
 phase_objectives:
   phase1: "Learn the landscape and build your support network."
