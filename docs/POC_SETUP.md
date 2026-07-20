@@ -71,6 +71,9 @@ El bot usa **Socket Mode** (no necesita URL pública ni ngrok — perfecto para 
    - `app_mentions:read` — leer menciones `@AIboarding`
    - `chat:write` — responder
    - `im:history` + `im:read` — (opcional) responder en mensajes directos
+   - `users:read` + `users:read.email` — (opcional) mapear el usuario de Slack a
+     su email, para compartir plan/progreso con la web app. Sin este scope, el
+     bot usa `slack:<id>` como identidad (funciona, pero separada de la UI).
 
 ### 2.4 Suscripción a eventos
 6. **Event Subscriptions** → activa → **Subscribe to bot events**, agrega:
@@ -92,7 +95,14 @@ Instalar dependencia y arrancar:
 pip install -e '.[slack]'
 aiboarding slack          # se queda escuchando; Ctrl+C para parar
 ```
-Luego en Slack: `@AIboarding ¿cómo configuro mi entorno?`
+Luego en Slack, menciona al bot:
+- `@AIboarding ¿cómo configuro mi entorno?` — Q&A sobre la base de conocimiento
+- `@AIboarding plan` — genera/muestra tu plan de 90 días (persistido)
+- `@AIboarding progreso` — muestra tu avance
+- `@AIboarding done 3` — marca el ítem 3 como completado
+
+El plan y el progreso se comparten con la web app si el bot puede resolver tu
+email (scope `users:read.email`); si no, viven bajo tu identidad de Slack.
 
 ---
 

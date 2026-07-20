@@ -48,3 +48,45 @@ def test_slack_handle_message_uses_agent(agent, monkeypatch):
     assert out["blocks"]
     # audit trail exists under the slack thread id
     assert agent.audit.read("slack_C42_1700_001")
+
+
+def _plan_bot(agent, populated_store, people, tmp_path):
+    from aiboarding.integrations.slack_bot import SlackBot
+    from aiboarding.persistence import get_progress_store
+
+    bot = SlackBot.__new__(SlackBot)
+    bot.svc = type(
+        "S",
+        (),
+        {
+            "agent": agent,
+            "progress": get_progress_store("sqlite", tmp_path / "slack.db"),
+            "plan_generator": PlanGenerator(populated_store, people, FakeLLM()),
+        },
+    )()
+    return bot
+
+
+def test_slack_plan_command_generates_and_persists(agent, populated_store, people, tmp_path):
+    bot = _plan_bot(agent, populated_store, people, tmp_path)
+    out = bot.handle_message("plan", "U9", "C1", "1.1")
+    assert "progreso 0/" in out["text"]
+    # user + active plan now exist keyed by the slack identity
+    user = bot.svc.progress.get_user("slack:U9")
+    assert user is not None
+    assert bot.svc.progress.get_active_plan(user.id).total > 0
+
+
+def test_slack_done_command_marks_progress(agent, populated_store, people, tmp_path):
+    bot = _plan_bot(agent, populated_store, people, tmp_path)
+    bot.handle_message("plan", "U9", "C1", "1.1")
+    out = bot.handle_message("done 1", "U9", "C1", "1.2")
+    user = bot.svc.progress.get_user("slack:U9")
+    assert bot.svc.progress.get_active_plan(user.id).done_count == 1
+    assert "progreso 1/" in out["text"]
+
+
+def test_slack_progress_without_plan_prompts(agent, populated_store, people, tmp_path):
+    bot = _plan_bot(agent, populated_store, people, tmp_path)
+    out = bot.handle_message("progreso", "Unew", "C1", "1.1")
+    assert "plan" in out["text"].lower()
