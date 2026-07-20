@@ -118,9 +118,13 @@ def create_app(services: Services | None = None) -> FastAPI:
 
     @app.post("/ingest")
     def ingest(req: IngestRequest):
+        from aiboarding.connectors import REAL_SOURCES
+
         connectors = build_connectors(svc.settings, local_path=req.path)
         selected = (
-            list(connectors.values()) if req.source == "all" else [connectors.get(req.source)]
+            [connectors[n] for n in REAL_SOURCES]
+            if req.source == "all"
+            else [connectors.get(req.source)]
         )
         if not selected or selected[0] is None:
             raise HTTPException(status_code=422, detail=f"Unknown source: {req.source}")

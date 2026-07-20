@@ -21,13 +21,24 @@ console = Console()
 
 @app.command()
 def ingest(
-    source: str = typer.Option("all", help="local | confluence | gdrive | github | all"),
+    source: str = typer.Option(
+        "all", help="local | confluence | gdrive | github | all ('all' = real sources, excludes local)"
+    ),
     path: str | None = typer.Option(None, help="Docs dir for the local connector"),
 ):
-    """Ingest documents into the knowledge base."""
+    """Ingest documents into the knowledge base.
+
+    'all' ingests the real connectors (confluence, gdrive, github). The local
+    sample docs are excluded from 'all' to avoid duplicating content that also
+    lives in Confluence/GitHub; ingest them explicitly with --source local.
+    """
+    from aiboarding.connectors import REAL_SOURCES
+
     svc = build_services()
     connectors = build_connectors(svc.settings, local_path=path)
-    selected = list(connectors.values()) if source == "all" else [connectors[source]]
+    selected = (
+        [connectors[n] for n in REAL_SOURCES] if source == "all" else [connectors[source]]
+    )
     results = run_ingestion(selected, svc.store)
     table = Table(title="Ingestion results")
     table.add_column("Connector")

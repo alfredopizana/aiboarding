@@ -16,7 +16,13 @@ __all__ = [
     "GDriveConnector",
     "GitHubConnector",
     "build_connectors",
+    "REAL_SOURCES",
 ]
+
+# Real, external knowledge sources. `local` (data/sample_docs) is a demo/offline
+# fixture whose content is typically also in Confluence/GitHub, so it is excluded
+# from "all" to avoid duplicate documents; ingest it explicitly with --source local.
+REAL_SOURCES = ("confluence", "gdrive", "github")
 
 
 def build_connectors(settings: Settings, local_path: str | None = None) -> dict[str, Connector]:
