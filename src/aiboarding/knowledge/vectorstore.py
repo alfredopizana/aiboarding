@@ -74,6 +74,10 @@ class VectorStore:
             if score >= min_score
         ]
 
+    def uri_titles(self) -> dict[str, str]:
+        """Map each known document URI to its title (for rendering doc links)."""
+        return {c.uri: c.title for c in self._chunks.values()}
+
     def count_chunks(self) -> int:
         return len(self._chunks)
 

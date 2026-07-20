@@ -88,6 +88,11 @@ with st.sidebar:
     st.session_state.setdefault("profile", {})
     prof = st.session_state["profile"]
 
+    # On a fresh session, seed the email from the URL (?email=...) so a refresh
+    # restores identity.
+    if not prof.get("email") and st.query_params.get("email"):
+        prof["email"] = st.query_params["email"]
+
     # Roles come from the plan templates; teams from the people directory.
     plan_roles = list(svc.plan_generator.templates["roles"].keys())
     teams = sorted({p.team for p in svc.people.people if p.team})
@@ -98,6 +103,23 @@ with st.sidebar:
         value=prof.get("email", ""),
         placeholder="ada@empresa.com",
     )
+    email = (prof.get("email") or "").strip()
+    # Keep the URL in sync so a refresh (or a shared link) restores identity.
+    if email:
+        st.query_params["email"] = email
+    elif "email" in st.query_params:
+        del st.query_params["email"]
+    # Whenever the email changes to a known user (typed OR from the URL), load
+    # their saved profile so a returning hire gets name/team/role back.
+    if email and email != prof.get("_loaded_email"):
+        prof["_loaded_email"] = email
+        saved = svc.progress.get_user(email)
+        if saved:
+            prof["name"] = saved.name or prof.get("name", "")
+            prof["team"] = saved.team
+            prof["role"] = saved.role
+            prof["start_date"] = saved.start_date or prof.get("start_date", "")
+            st.rerun()
     _team_opts = ["—"] + teams
     prof["team"] = st.selectbox(
         "Equipo",
@@ -196,6 +218,7 @@ def render_plan_checklist(stored) -> None:
         stored.progress,
         text=f"Progreso: {stored.done_count}/{stored.total} ({stored.progress:.0%})",
     )
+    doc_titles = svc.store.uri_titles()  # uri -> title, for clickable doc links
     # Group items by phase, preserving order.
     phases: dict[str, list] = {}
     for it in stored.items:
@@ -214,13 +237,14 @@ def render_plan_checklist(stored) -> None:
             if checked != it.done:
                 svc.progress.set_item_done(it.id, checked)
                 st.rerun()
-            meta = []
             if it.suggested_contacts:
-                meta.append("🤝 " + ", ".join(it.suggested_contacts))
-            if it.suggested_docs:
-                meta.append(f"📄 {len(it.suggested_docs)} doc(s)")
-            if meta:
-                st.caption("   ".join(meta))
+                st.caption("🤝 " + ", ".join(it.suggested_contacts))
+            for uri in it.suggested_docs:
+                title = doc_titles.get(uri) or uri.rsplit("/", 1)[-1] or uri
+                if uri.startswith("http"):
+                    st.markdown(f"&nbsp;&nbsp;📄 [{title}]({uri})")
+                else:
+                    st.caption(f"📄 {title}")
 
 
 with tab_plan:
@@ -282,15 +306,18 @@ with tab_people:
 # ── Admin / Audit ────────────────────────────────────────────────────────────
 with tab_admin:
     st.subheader("Ingesta de documentos")
-    src = st.selectbox("Fuente", ["local", "confluence", "gdrive", "github", "all"])
+    src = st.selectbox("Fuente", ["all", "confluence", "github", "gdrive", "local"])
+    st.caption("'all' = fuentes reales (confluence, gdrive, github). 'local' son samples offline.")
     path = st.text_input(
         "Ruta (solo para 'local')", value="data/sample_docs", placeholder="data/sample_docs"
     )
     if st.button("📥 Ingerir"):
         with st.spinner("Ingiriendo…"):
+            from aiboarding.connectors import REAL_SOURCES
+
             connectors = build_connectors(svc.settings, local_path=path or None)
             selected = (
-                list(connectors.values()) if src == "all" else [connectors.get(src)]
+                [connectors[n] for n in REAL_SOURCES] if src == "all" else [connectors.get(src)]
             )
             selected = [c for c in selected if c]
             if not selected:
