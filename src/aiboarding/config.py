@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     audit_dir: Path = Path("./data/audit")
     people_file: Path = Path("./data/people.yaml")
 
+    # Persistence (users, plans, progress)
+    progress_backend: str = "sqlite"  # sqlite | firebase (future)
+    db_path: Path = Path("./data/aiboarding.db")
+
+    # Tracing (LangSmith)
+    langsmith_tracing: bool = False
+    langsmith_api_key: str = ""
+    langsmith_project: str = "aiboarding"
+
     # Confluence
     confluence_base_url: str = ""
     confluence_email: str = ""
@@ -67,16 +76,15 @@ class _EnvAliasSettings(Settings):
 
 @lru_cache
 def get_settings() -> Settings:
-    import os
-
     prefixed = _EnvAliasSettings()
     plain = Settings()
-    # Prefixed values win when explicitly set in the environment.
+    # Start from the unprefixed/legacy values, then let any AIBOARDING_-prefixed
+    # values win. `model_fields_set` captures exactly the fields the prefixed
+    # source provided — whether from OS env vars OR the .env file (os.environ
+    # alone misses .env-only values).
     merged = plain.model_dump()
-    for field in Settings.model_fields:
-        env_key = f"AIBOARDING_{field.upper()}"
-        if env_key in os.environ:
-            merged[field] = getattr(prefixed, field)
+    for field in prefixed.model_fields_set:
+        merged[field] = getattr(prefixed, field)
     return Settings(**merged)
 
 
