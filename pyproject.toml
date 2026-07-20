@@ -25,6 +25,7 @@ dependencies = [
     "rich>=13.0.0",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0",
+    "sqlmodel>=0.0.21",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +41,9 @@ gdrive = [
 ]
 slack = [
     "slack-sdk>=3.27.0",
+]
+ui = [
+    "streamlit>=1.36.0",
 ]
 
 [project.scripts]

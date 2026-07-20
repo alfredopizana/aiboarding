@@ -18,7 +18,9 @@ token.json
 .chroma/
 data/vectorstore/
 data/audit/
+data/aiboarding.db
 *.sqlite3
+*.db
 
 # Tooling
 .pytest_cache/
