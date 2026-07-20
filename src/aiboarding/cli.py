@@ -12,8 +12,8 @@ from rich.table import Table
 from aiboarding.config import get_settings
 from aiboarding.connectors import build_connectors
 from aiboarding.container import build_services
-from aiboarding.ingestion.pipeline import run_ingestion
-from aiboarding.models import UserProfile
+from aiboarding.ingestion.pipeline import ingest_text, run_ingestion
+from aiboarding.models import Person, UserProfile
 
 app = typer.Typer(help="AIboarding — AI onboarding assistant (auditable LangGraph agent).")
 console = Console()
@@ -21,13 +21,24 @@ console = Console()
 
 @app.command()
 def ingest(
-    source: str = typer.Option("all", help="local | confluence | gdrive | github | all"),
+    source: str = typer.Option(
+        "all", help="local | confluence | gdrive | github | all ('all' = real sources, excludes local)"
+    ),
     path: str | None = typer.Option(None, help="Docs dir for the local connector"),
 ):
-    """Ingest documents into the knowledge base."""
+    """Ingest documents into the knowledge base.
+
+    'all' ingests the real connectors (confluence, gdrive, github). The local
+    sample docs are excluded from 'all' to avoid duplicating content that also
+    lives in Confluence/GitHub; ingest them explicitly with --source local.
+    """
+    from aiboarding.connectors import REAL_SOURCES
+
     svc = build_services()
     connectors = build_connectors(svc.settings, local_path=path)
-    selected = list(connectors.values()) if source == "all" else [connectors[source]]
+    selected = (
+        [connectors[n] for n in REAL_SOURCES] if source == "all" else [connectors[source]]
+    )
     results = run_ingestion(selected, svc.store)
     table = Table(title="Ingestion results")
     table.add_column("Connector")
@@ -38,6 +49,87 @@ def ingest(
         table.add_row(r.connector, str(r.documents), str(r.chunks), "skipped (not configured)" if r.skipped else "ok")
     console.print(table)
     console.print(f"Store now holds [bold]{svc.store.count_documents()}[/] docs / [bold]{svc.store.count_chunks()}[/] chunks.")
+
+
+@app.command(name="add-doc")
+def add_doc(
+    title: str = typer.Option(..., help="Document title"),
+    file: str | None = typer.Option(None, help="Read content from this file (.md/.txt)"),
+    content: str | None = typer.Option(None, help="Inline content (alternative to --file)"),
+    uri: str = typer.Option("", help="Stable URI; pushing the same URI again updates the doc"),
+):
+    """Push a single document into the knowledge base (no connector needed)."""
+    if (file is None) == (content is None):
+        console.print("[red]Provide exactly one of --file or --content.[/]")
+        raise typer.Exit(2)
+    if file is not None:
+        from pathlib import Path
+
+        path = Path(file).expanduser()
+        if not path.is_file():
+            console.print(f"[red]File not found: {path}[/]")
+            raise typer.Exit(2)
+        content = path.read_text(encoding="utf-8", errors="replace")
+        uri = uri or str(path.resolve())
+    if not content or not content.strip():
+        console.print("[red]Content is empty.[/]")
+        raise typer.Exit(2)
+    svc = build_services()
+    doc, n_chunks = ingest_text(svc.store, title=title, content=content, uri=uri)
+    console.print(
+        f"Ingested [bold]{doc.title}[/] as {doc.doc_id} ({n_chunks} chunks). "
+        f"Store: {svc.store.count_documents()} docs / {svc.store.count_chunks()} chunks."
+    )
+
+
+@app.command(name="add-person")
+def add_person(
+    person_id: str = typer.Option(..., "--id", help="Unique id, e.g. jane.doe"),
+    name: str = typer.Option(..., help="Full name"),
+    role: str = typer.Option(..., help="Job title"),
+    team: str = typer.Option(..., help="Team id, e.g. devops"),
+    email: str = typer.Option("", help="Email address"),
+    slack: str = typer.Option("", help="Slack handle, e.g. @jane"),
+    expertise: str = typer.Option("", help="Comma-separated topics"),
+    buddy: bool = typer.Option(False, "--buddy", help="Mark as onboarding buddy"),
+    timezone: str = typer.Option("", help="IANA timezone, e.g. America/Mexico_City"),
+):
+    """Add or update a person in the directory (persisted to people.yaml)."""
+    svc = build_services()
+    person = Person(
+        id=person_id,
+        name=name,
+        role=role,
+        team=team,
+        email=email,
+        slack=slack,
+        expertise=[t.strip() for t in expertise.split(",") if t.strip()],
+        onboarding_buddy=buddy,
+        timezone=timezone,
+    )
+    created = svc.people.upsert(person)
+    svc.people.save(svc.settings.people_file)
+    verb = "Added" if created else "Updated"
+    console.print(
+        f"{verb} [bold]{person.name}[/] ({person.team}) — directory now has "
+        f"{len(svc.people.people)} people in {svc.settings.people_file}."
+    )
+
+
+@app.command()
+def diagram(
+    output: str | None = typer.Option(None, help="Write a Markdown file with the Mermaid diagram"),
+):
+    """Generate the agent's architecture diagram (Mermaid) from the live LangGraph graph."""
+    svc = build_services()
+    mermaid = svc.agent.graph.get_graph().draw_mermaid()
+    md = "# AIboarding agent graph\n\n```mermaid\n" + mermaid + "\n```\n"
+    if output:
+        with open(output, "w") as fh:
+            fh.write(md)
+        console.print(f"Diagram written to [bold]{output}[/] — renders on GitHub or https://mermaid.live")
+    else:
+        console.print(mermaid)
 
 
 @app.command()
@@ -132,6 +224,42 @@ def serve(host: str = "127.0.0.1", port: int = 8000):
     from aiboarding.api.server import create_app
 
     uvicorn.run(create_app(), host=host, port=port)
+
+
+@app.command()
+def ui(host: str = "127.0.0.1", port: int = 8501):
+    """Launch the Streamlit SPA (end-user app, alternative to Slack)."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    app_path = Path(__file__).parent / "ui" / "streamlit_app.py"
+    try:
+        import streamlit  # noqa: F401
+    except ImportError:
+        console.print("[red]Streamlit not installed. Run:[/] pip install 'aiboarding[ui]'")
+        raise typer.Exit(1) from None
+    cmd = [
+        sys.executable, "-m", "streamlit", "run", str(app_path),
+        "--server.address", host, "--server.port", str(port),
+    ]
+    raise typer.Exit(subprocess.call(cmd))
+
+
+@app.command()
+def slack():
+    """Start the Slack bot (Socket Mode). Requires pip install 'aiboarding[slack]'."""
+    from aiboarding.integrations.slack_bot import SlackBot
+
+    bot = SlackBot()
+    if not bot.is_configured():
+        console.print(
+            "[red]Slack not configured.[/] Set SLACK_BOT_TOKEN (xoxb-) and "
+            "SLACK_APP_TOKEN (xapp-) in .env and run: pip install 'aiboarding[slack]'"
+        )
+        raise typer.Exit(1)
+    console.print("[green]Starting Slack bot (Socket Mode). Ctrl+C to stop.[/]")
+    bot.start()
 
 
 @app.command()

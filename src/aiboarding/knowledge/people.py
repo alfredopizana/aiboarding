@@ -24,6 +24,21 @@ class PeopleDirectory:
         data = yaml.safe_load(path.read_text()) or {}
         return cls([Person(**p) for p in data.get("people", [])])
 
+    def upsert(self, person: Person) -> bool:
+        """Insert or replace by id. Returns True if the person is new."""
+        for i, existing in enumerate(self.people):
+            if existing.id == person.id:
+                self.people[i] = person
+                return False
+        self.people.append(person)
+        return True
+
+    def save(self, path: str | Path) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"people": [p.model_dump() for p in self.people]}
+        path.write_text(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True))
+
     def match(self, topic: str, team: str = "", limit: int = 3) -> list[PersonMatch]:
         tokens = set(_TOKEN_RE.findall(topic.lower()))
         matches: list[PersonMatch] = []

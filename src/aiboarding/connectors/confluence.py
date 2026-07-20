@@ -45,12 +45,18 @@ class ConfluenceConnector(Connector):
                 resp = client.get(url, params=params, auth=auth)
                 resp.raise_for_status()
                 data = resp.json()
+                # Site base for building real page URLs (e.g. ".../wiki").
+                site_base = (data.get("_links") or {}).get("base") or self.base_url
                 for page in data.get("results", []):
                     body = (page.get("body", {}).get("storage", {}) or {}).get("value", "")
                     content = strip_html(body)
                     if not content:
                         continue
-                    page_uri = f"{self.base_url}/pages/{page['id']}"
+                    # webui is the real browser path: /spaces/<KEY>/pages/<id>/<slug>.
+                    webui = (page.get("_links") or {}).get("webui")
+                    page_uri = (
+                        f"{site_base}{webui}" if webui else f"{self.base_url}/pages/{page['id']}"
+                    )
                     yield SourceDocument.create(
                         source="confluence",
                         title=page.get("title", f"Page {page['id']}"),

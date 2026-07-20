@@ -29,10 +29,19 @@ class PlanGenerator:
         self.llm = llm
         self.templates = yaml.safe_load(Path(templates_path).read_text())
 
+    def _resolve_role_key(self, user: UserProfile) -> str:
+        """Pick a role template from the explicit role, else the team, else default."""
+        roles = self.templates["roles"]
+        if user.role and user.role.lower() in roles:
+            return user.role.lower()
+        team_map = self.templates.get("team_role_map", {})
+        mapped = team_map.get(user.team.lower()) if user.team else None
+        if mapped and mapped in roles:
+            return mapped
+        return "default"
+
     def generate(self, user: UserProfile) -> SuccessPlan:
-        role_templates = self.templates["roles"].get(
-            user.role.lower(), self.templates["roles"]["default"]
-        )
+        role_templates = self.templates["roles"][self._resolve_role_key(user)]
         objectives = self.templates["phase_objectives"]
         phases: list[PlanPhase] = []
         for phase_key in ("phase1", "phase2", "phase3"):

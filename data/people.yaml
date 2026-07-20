@@ -50,3 +50,109 @@ people:
     slack: "@leom"
     expertise: ["frontend", "react", "design system", "code review", "development environment"]
     timezone: "America/Sao_Paulo"
+  # ── IT ──────────────────────────────────────────────────────────
+  - id: raj.singh
+    name: "Raj Singh"
+    role: "IT Support Lead"
+    team: it
+    email: raj.singh@company.com
+    slack: "@rajs"
+    expertise: ["laptop setup", "accounts provisioning", "sso", "okta", "hardware", "vpn access", "helpdesk"]
+    onboarding_buddy: true
+    timezone: "Asia/Kolkata"
+  - id: claire.dubois
+    name: "Claire Dubois"
+    role: "IT Systems Administrator"
+    team: it
+    email: claire.dubois@company.com
+    slack: "@claired"
+    expertise: ["google workspace", "saas administration", "mdm", "jamf", "licenses", "printers"]
+    timezone: "Europe/Paris"
+  # ── Data ────────────────────────────────────────────────────────
+  - id: priya.nair
+    name: "Priya Nair"
+    role: "Data Engineering Lead"
+    team: data
+    email: priya.nair@company.com
+    slack: "@priyan"
+    expertise: ["data warehouse", "etl", "airflow", "dbt", "snowflake", "data pipelines"]
+    timezone: "America/New_York"
+  - id: tomas.novak
+    name: "Tomáš Novák"
+    role: "Analytics Engineer"
+    team: data
+    email: tomas.novak@company.com
+    slack: "@tomasn"
+    expertise: ["dashboards", "looker", "sql", "event tracking", "experimentation"]
+    timezone: "Europe/Prague"
+  # ── Custom Engineering ──────────────────────────────────────────
+  - id: grace.okafor
+    name: "Grace Okafor"
+    role: "Custom Engineering Manager"
+    team: custom-eng
+    email: grace.okafor@company.com
+    slack: "@graceo"
+    expertise: ["customer integrations", "solutions delivery", "statements of work", "escalations"]
+    timezone: "Africa/Lagos"
+  - id: mateo.rossi
+    name: "Mateo Rossi"
+    role: "Senior Solutions Engineer"
+    team: custom-eng
+    email: mateo.rossi@company.com
+    slack: "@mateor"
+    expertise: ["customer apis", "webhooks", "sandbox environments", "integration patterns", "professional services"]
+    timezone: "America/Buenos_Aires"
+  # ── Website ─────────────────────────────────────────────────────
+  - id: hana.kim
+    name: "Hana Kim"
+    role: "Web Performance Engineer"
+    team: web
+    email: hana.kim@company.com
+    slack: "@hanak"
+    expertise: ["nextjs", "seo", "web performance", "cms", "accessibility", "lighthouse"]
+    timezone: "Asia/Seoul"
+  # ── DevOps ──────────────────────────────────────────────────────
+  - id: lucas.almeida
+    name: "Lucas Almeida"
+    role: "DevOps Engineer"
+    team: devops
+    email: lucas.almeida@company.com
+    slack: "@lucasa"
+    expertise: ["ci/cd", "github actions", "terraform", "kubernetes", "releases", "secrets rotation"]
+    timezone: "America/Sao_Paulo"
+  - id: nina.petrova
+    name: "Nina Petrova"
+    role: "Site Reliability Engineer"
+    team: devops
+    email: nina.petrova@company.com
+    slack: "@ninap"
+    expertise: ["monitoring", "grafana", "alerting", "slo", "capacity planning", "observability"]
+    onboarding_buddy: true
+    timezone: "Europe/Berlin"
+  # ── Security ────────────────────────────────────────────────────
+  - id: yara.haddad
+    name: "Yara Haddad"
+    role: "Security Analyst"
+    team: security
+    email: yara.haddad@company.com
+    slack: "@yarah"
+    expertise: ["phishing response", "secrets management", "vulnerability scanning", "audit logs"]
+    timezone: "Asia/Dubai"
+  # ── QA ──────────────────────────────────────────────────────────
+  - id: ken.watanabe
+    name: "Ken Watanabe"
+    role: "QA Lead"
+    team: qa
+    email: ken.watanabe@company.com
+    slack: "@kenw"
+    expertise: ["test strategy", "playwright", "regression testing", "release sign-off", "quality gates"]
+    timezone: "Asia/Tokyo"
+  - id: elena.duarte
+    name: "Elena Duarte"
+    role: "QA Automation Engineer"
+    team: qa
+    email: elena.duarte@company.com
+    slack: "@elenad"
+    expertise: ["test automation", "api testing", "cypress", "bug triage", "flaky tests"]
+    onboarding_buddy: true
+    timezone: "Europe/Madrid"
