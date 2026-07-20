@@ -91,6 +91,18 @@ def test_history_is_isolated_per_user(store):
     assert store.get_history(b.id) == []
 
 
+def test_clear_history_removes_only_that_user(store):
+    a = store.upsert_user(UserProfile(name="A"), "a@x.dev")
+    b = store.upsert_user(UserProfile(name="B"), "b@x.dev")
+    store.save_message(a.id, "user", "q1")
+    store.save_message(a.id, "assistant", "r1")
+    store.save_message(b.id, "user", "keep me")
+    removed = store.clear_history(a.id)
+    assert removed == 2
+    assert store.get_history(a.id) == []
+    assert len(store.get_history(b.id)) == 1  # untouched
+
+
 @pytest.mark.parametrize(
     "team,role,expected",
     [

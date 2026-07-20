@@ -223,10 +223,19 @@ with tab_chat:
                     svc.progress.save_message(chat_user_id, "user", prompt, thread)
                     svc.progress.save_message(chat_user_id, "assistant", answer, thread)
 
-    if st.session_state["messages"] and st.button("🗑️ Limpiar (solo esta vista)"):
-        st.session_state["messages"] = []
-        st.session_state.pop("history_email", None)
-        st.rerun()
+    if st.session_state["messages"]:
+        if chat_user_id:  # persisted history — offer a real delete with confirmation
+            with st.expander("🗑️ Borrar mi historial"):
+                st.caption("Borra permanentemente tu historial de conversaciones guardado.")
+                if st.button("Sí, borrar definitivamente", type="primary"):
+                    n = svc.progress.clear_history(chat_user_id)
+                    st.session_state["messages"] = []
+                    st.session_state.pop("history_email", None)
+                    st.toast(f"Historial borrado ({n} mensajes).")
+                    st.rerun()
+        elif st.button("🗑️ Limpiar conversación"):  # ephemeral, nothing persisted
+            st.session_state["messages"] = []
+            st.rerun()
 
 # ── Plan ─────────────────────────────────────────────────────────────────────
 CATEGORY_ICON = {"learning": "📘", "relationships": "🤝", "delivery": "🚀", "process": "⚙️"}

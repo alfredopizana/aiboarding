@@ -104,6 +104,9 @@ class ProgressStore(ABC):
     @abstractmethod
     def get_history(self, user_id: str, limit: int = 100) -> list[StoredMessage]: ...
 
+    @abstractmethod
+    def clear_history(self, user_id: str) -> int: ...
+
 
 # ── SQLite implementation ───────────────────────────────────────────────────
 class SQLiteProgressStore(ProgressStore):
@@ -238,6 +241,17 @@ class SQLiteProgressStore(ProgressStore):
                 )
                 for r in rows
             ]
+
+    def clear_history(self, user_id: str) -> int:
+        """Delete a user's persisted conversation history. Returns rows removed."""
+        with Session(self.engine) as s:
+            rows = s.exec(
+                select(ChatMessageRecord).where(ChatMessageRecord.user_id == user_id)
+            ).all()
+            for r in rows:
+                s.delete(r)
+            s.commit()
+            return len(rows)
 
 
 def _to_user(rec: UserRecord) -> StoredUser:
