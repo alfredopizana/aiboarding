@@ -21,6 +21,8 @@ data/audit/
 data/aiboarding.db
 *.sqlite3
 *.db
+*.db-wal
+*.db-shm
 
 # Tooling
 .pytest_cache/

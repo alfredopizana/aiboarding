@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import BaseModel
+from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from aiboarding.models import SuccessPlan, UserProfile
@@ -107,11 +108,24 @@ class ProgressStore(ABC):
 # ── SQLite implementation ───────────────────────────────────────────────────
 class SQLiteProgressStore(ProgressStore):
     def __init__(self, db_path: str | Path):
-        db_path = Path(db_path)
+        # Resolve to an absolute path so the DB location is independent of the
+        # process CWD (Streamlit launches in a subprocess whose cwd may differ).
+        db_path = Path(db_path).expanduser().resolve()
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self.engine = create_engine(
-            f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
+            f"sqlite:///{db_path}",
+            connect_args={"check_same_thread": False, "timeout": 30},
         )
+
+        # WAL mode + a busy timeout make concurrent access (Streamlit reruns,
+        # multiple sessions) robust and avoid spurious readonly/locked errors.
+        @event.listens_for(self.engine, "connect")
+        def _pragmas(dbapi_conn, _record):  # pragma: no cover - trivial
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA busy_timeout=5000")
+            cur.close()
+
         SQLModel.metadata.create_all(self.engine)
 
     def upsert_user(self, profile: UserProfile, email: str) -> StoredUser:
