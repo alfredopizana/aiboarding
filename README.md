@@ -24,8 +24,46 @@ right documentation — built on **LangGraph** with a full **audit trail** for e
 | Confluence Cloud | `CONFLUENCE_BASE_URL`, `CONFLUENCE_EMAIL`, `CONFLUENCE_API_TOKEN` |
 | GitHub (READMEs + docs) | `GITHUB_TOKEN`, `GITHUB_REPOS=org/repo1,org/repo2` |
 | Google Drive | `GDRIVE_CREDENTIALS_PATH`, `GDRIVE_FOLDER_IDS` + `pip install ".[gdrive]"` |
+| **Direct push** (no connector) | `aiboarding add-doc` / `POST /documents` — see below |
 
 Unconfigured connectors are skipped gracefully.
+
+### Pushing new data at runtime
+
+Documents and people can be added without files or connectors — same URI updates in place:
+
+```bash
+# push a document (from a file or inline)
+aiboarding add-doc --title "Parking Policy" --file ./policy.md
+aiboarding add-doc --title "Q3 Update" --content "We shipped the churn dashboard."
+curl -X POST localhost:8000/documents -H 'content-type: application/json' \
+  -d '{"title": "Q3 Update", "content": "We shipped the churn dashboard."}'
+
+# add/update a person in the directory (persists to data/people.yaml)
+aiboarding add-person --id jane.doe --name "Jane Doe" --role "SRE" --team devops \
+  --slack @janed --expertise "prometheus,alerting" --buddy
+curl -X POST localhost:8000/people -H 'content-type: application/json' \
+  -d '{"id": "jane.doe", "name": "Jane Doe", "role": "SRE", "team": "devops"}'
+```
+
+## Sample knowledge base
+
+`data/sample_docs/` ships a realistic company corpus (all ingested by the local connector,
+subdirectories included), and `data/people.yaml` has 19 people across 10 teams:
+
+- **`runbooks/`** — IT, Data, Custom Engineering, Website, DevOps, Security, QA.
+- **`engineering/`** — architecture overview (Mermaid diagrams), trunk-based development,
+  how to review a PR, incident management.
+- **`company/`** — mission/vision/values, 2026 OKRs, product roadmap, RACI matrix,
+  org chart (Mermaid), communication practices, inclusive language guide, glossary, new-hire FAQ.
+
+Docs embed [Mermaid](https://mermaid.js.org) diagrams — they render on GitHub/VS Code and are
+ingested as plain text for RAG. `aiboarding diagram` generates the agent's own architecture
+diagram from the live LangGraph graph:
+
+```bash
+aiboarding diagram --output agent-graph.md   # or print Mermaid to stdout
+```
 
 ## Phase 2 (included, activated by config)
 
@@ -77,7 +115,9 @@ export OPENAI_API_KEY=sk-...
 | POST | `/ask` | `{query, user?}` → answer + citations + people |
 | POST | `/plan` | `UserProfile` → structured plan + markdown |
 | GET | `/people?topic=` | Expertise matching |
-| POST | `/ingest` | Trigger ingestion |
+| POST | `/people` | Add/update a person (persists to `people.yaml`) |
+| POST | `/ingest` | Trigger connector ingestion |
+| POST | `/documents` | Push a single document directly |
 | GET | `/audit/{thread_id}` | Full audit trail |
 
 ## Architecture
@@ -97,7 +137,7 @@ Full specs in [`specs/`](specs/): vision, architecture, ingestion, agent+audit,
 ## Development
 
 ```bash
-pytest            # 36 tests, fully offline
+pytest            # 45 tests, fully offline
 ruff check src tests
 ```
 

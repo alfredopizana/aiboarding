@@ -37,3 +37,26 @@ def test_people_match_team_boost(people):
 
 def test_people_buddies(people):
     assert len(people.buddies()) >= 2
+
+
+def test_people_directory_covers_new_teams(people):
+    teams = {p.team for p in people.people}
+    assert {"it", "data", "custom-eng", "devops", "qa", "security", "web"} <= teams
+
+
+def test_people_upsert_and_save_roundtrip(people, tmp_path):
+    from aiboarding.knowledge.people import PeopleDirectory
+    from aiboarding.models import Person
+
+    n = len(people.people)
+    new = Person(id="test.person", name="Test Person", role="Engineer", team="qa")
+    assert people.upsert(new) is True
+    updated = Person(id="test.person", name="Test Person", role="Senior Engineer", team="qa")
+    assert people.upsert(updated) is False
+    assert len(people.people) == n + 1
+
+    out = tmp_path / "people.yaml"
+    people.save(out)
+    reloaded = PeopleDirectory.from_yaml(out)
+    assert len(reloaded.people) == n + 1
+    assert any(p.id == "test.person" and p.role == "Senior Engineer" for p in reloaded.people)
