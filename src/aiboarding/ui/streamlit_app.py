@@ -40,6 +40,7 @@ def current_user() -> UserProfile:
         role=p.get("role") or "",  # empty = let the generator pick from team
         team=p.get("team") or "",
         start_date=p.get("start_date") or None,
+        email=(p.get("email") or "").strip(),
     )
 
 

@@ -17,14 +17,27 @@ _CONNECT_RE = re.compile(
     r"\b(qui[eé]n|who|contact|connect|hablar con|talk to|expert|buddy|mentor|reach out)\b", re.I
 )
 _DOCS_RE = re.compile(
-    r"\b(doc|documentaci[oó]n|documentation|link|enlace|d[oó]nde encuentro|where (can i )?find|wiki|runbook|manual)\b",
+    r"\b(doc|documentaci[oó]n|documentation|link|enlace|d[oó]nde encuentro|where (can i )?find|"
+    r"wiki|runbook|manual)\b",
+    re.I,
+)
+# Advice/reasoning questions must be answered with judgement, not a link dump —
+# even when they mention "docs". Checked before _DOCS_RE.
+_ADVICE_RE = re.compile(
+    r"\b(recomiend|recommend|suggest|should i|do i|debo|deber[ií]a|qu[eé] (hago|hacer|me conviene)|"
+    r"c[oó]mo (empiezo|deber[ií]a)|how (do|should) i|mejor|first|primero|prioriti|prioriza|vs\.?|"
+    r"or (should|do)|o (agendo|leer|hacer))\b",
     re.I,
 )
 
 SYSTEM_PROMPT = (
-    "You are AIboarding, an onboarding assistant. Answer using ONLY the provided context. "
-    "Cite sources by title. If the context is insufficient, say so and suggest asking a teammate. "
-    "Answer in the same language as the question."
+    "You are AIboarding, a proactive onboarding assistant for a specific new hire. "
+    "Give a direct, reasoned, PERSONALIZED answer — never just a list of links. "
+    "Use the user's profile and their 90-day plan to tailor the advice: reference specific "
+    "plan items, teammates, or docs and explain WHY they matter for this person right now. "
+    "Prefer concrete next steps. Keep it concise (a short paragraph or a few bullets). "
+    "Ground factual claims in the provided context; if the context is thin, still give sensible "
+    "onboarding guidance and note what to verify. Answer in the same language as the question."
 )
 
 
@@ -33,6 +46,8 @@ def classify_intent_heuristic(query: str) -> Intent | None:
         return "plan"
     if _CONNECT_RE.search(query):
         return "connect"
+    if _ADVICE_RE.search(query):
+        return "question"
     if _DOCS_RE.search(query):
         return "docs"
     return None
@@ -48,12 +63,71 @@ class Nodes:
         llm: LLMClient,
         audit: AuditLogger,
         plan_generator=None,
+        progress=None,
+        repos: list[str] | None = None,
     ):
         self.store = store
         self.people = people
         self.llm = llm
         self.audit = audit
         self.plan_generator = plan_generator
+        self.progress = progress  # ProgressStore | None — for plan-aware answers
+        self.repos = repos or []
+
+    # ── personalization context builders ───────────────────────────
+    def _profile_context(self, user: UserProfile) -> str:
+        line = (
+            f"USER: {user.name} · role={user.role or 'unspecified'} · "
+            f"team={user.team or 'unspecified'} · start_date={user.start_date or 'unspecified'}"
+        )
+        if self.repos:
+            line += f"\nCODE REPOS: {', '.join(self.repos)}"
+        return line
+
+    def _plan_context(self, user: UserProfile) -> str:
+        email = getattr(user, "email", "")
+        if not (self.progress and email):
+            return ""
+        saved = self.progress.get_user(email)
+        plan = self.progress.get_active_plan(saved.id) if saved else None
+        if not plan:
+            return ""
+        lines = [f"USER'S 90-DAY PLAN: {plan.done_count}/{plan.total} items done. Pending next steps:"]
+        for it in [i for i in plan.items if not i.done][:5]:
+            lines.append(f"  - ({it.phase}) {it.title}: {it.description}")
+        return "\n".join(lines)
+
+    def _people_context(self, query: str, user: UserProfile):
+        matches = self.people.match(query, team=user.team, limit=3)
+        if not matches:
+            return "", []
+        lines = ["RELEVANT TEAMMATES:"]
+        for m in matches:
+            contact = m.person.slack or m.person.email or ""
+            exp = ", ".join(m.person.expertise)
+            lines.append(
+                f"  - {m.person.name} ({m.person.role}, {m.person.team})"
+                + (f" — {exp}" if exp else "")
+                + (f" · {contact}" if contact else "")
+            )
+        return "\n".join(lines), matches
+
+    def _personalized_answer(self, state: AgentState, retrieved: list) -> tuple[str, list]:
+        """Build a profile/plan/people/docs context and let the LLM reason over it."""
+        query = state["query"]
+        user = state.get("user", UserProfile())
+        people_ctx, matches = self._people_context(query, user)
+        parts = [self._profile_context(user)]
+        plan_ctx = self._plan_context(user)
+        if plan_ctx:
+            parts.append(plan_ctx)
+        if people_ctx:
+            parts.append(people_ctx)
+        if retrieved:
+            docs = "\n\n".join(f"[{r.chunk.title}]\n{r.chunk.text[:900]}" for r in retrieved)
+            parts.append(f"CONTEXT:\n{docs}")
+        user_msg = f"QUESTION: {query}\n\n" + "\n\n".join(parts)
+        return self.llm.complete(SYSTEM_PROMPT, user_msg), matches
 
     # ── classify ───────────────────────────────────────────────────
     def classify_intent(self, state: AgentState) -> AgentState:
@@ -91,22 +165,16 @@ class Nodes:
                 )
                 for r in retrieved
             ]
-            if retrieved:
-                context = "\n\n".join(
-                    f"[{r.chunk.title}]\n{r.chunk.text}" for r in retrieved
-                )
-                answer = self.llm.complete(SYSTEM_PROMPT, f"QUESTION: {query}\n\nCONTEXT:\n{context}")
-            else:
-                fallbacks = self.people.match(query, team=state.get("user", UserProfile()).team)
-                names = ", ".join(m.person.name for m in fallbacks) or "your onboarding buddy"
-                answer = (
-                    "I couldn't find relevant documentation for that yet. "
-                    f"Consider asking: {names}. You can also ingest more sources with `aiboarding ingest`."
-                )
+            answer, matches = self._personalized_answer(state, retrieved)
             rec["sources"] = [c.chunk_id for c in citations]
             rec["output_text"] = answer
-            rec["detail"] = {"chunks": len(retrieved)}
-        return {"retrieved": retrieved, "citations": citations, "answer": answer}
+            rec["detail"] = {"chunks": len(retrieved), "people": len(matches)}
+        return {
+            "retrieved": retrieved,
+            "citations": citations,
+            "answer": answer,
+            "people_matches": matches,
+        }
 
     # ── people matching ────────────────────────────────────────────
     def suggest_people(self, state: AgentState) -> AgentState:
@@ -157,21 +225,28 @@ class Nodes:
                 )
                 for r in retrieved
             ]
-            seen: set[str] = set()
-            lines = ["Relevant documentation:", ""]
-            for c in citations:
-                if c.uri in seen:
-                    continue
-                seen.add(c.uri)
-                lines.append(f"- **{c.title}** ({c.source}) — {c.uri}")
-            answer = (
-                "\n".join(lines)
-                if len(lines) > 2
-                else "No documentation matched. Try `aiboarding ingest` to index more sources."
-            )
+            if retrieved:
+                # Reason first (personalized), then point to the specific docs.
+                reasoning, matches = self._personalized_answer(state, retrieved)
+                seen: set[str] = set()
+                links = []
+                for c in citations:
+                    if c.uri in seen:
+                        continue
+                    seen.add(c.uri)
+                    links.append(f"- **{c.title}** ({c.source}) — {c.uri}")
+                answer = reasoning + "\n\n**Relevant documentation:**\n" + "\n".join(links)
+            else:
+                matches = []
+                answer = "No documentation matched. Try `aiboarding ingest` to index more sources."
             rec["sources"] = [c.chunk_id for c in citations]
             rec["output_text"] = answer
-        return {"retrieved": retrieved, "citations": citations, "answer": answer}
+        return {
+            "retrieved": retrieved,
+            "citations": citations,
+            "answer": answer,
+            "people_matches": matches,
+        }
 
     # ── finalize ───────────────────────────────────────────────────
     def finalize(self, state: AgentState) -> AgentState:

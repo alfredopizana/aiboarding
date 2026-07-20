@@ -38,7 +38,10 @@ def build_services(settings: Settings | None = None) -> Services:
     llm = get_llm(settings.llm_provider, settings.openai_api_key, settings.llm_model)
     audit = AuditLogger(settings.audit_dir)
     plan_generator = PlanGenerator(store, people, llm)
-    nodes = Nodes(store, people, llm, audit, plan_generator)
-    agent = OnboardingAgent(nodes, audit)
     progress = get_progress_store(settings.progress_backend, settings.db_path)
+    nodes = Nodes(
+        store, people, llm, audit, plan_generator,
+        progress=progress, repos=settings.github_repo_list,
+    )
+    agent = OnboardingAgent(nodes, audit)
     return Services(settings, store, people, llm, audit, plan_generator, agent, progress)

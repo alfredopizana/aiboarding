@@ -57,9 +57,10 @@ class SlackBot:
         if low in ("progreso", "progress", "mi progreso", "my progress"):
             return self._handle_plan(slack_user, thread_id, generate=False)
 
-        # Default: Q&A over the knowledge base.
+        # Default: Q&A over the knowledge base (plan-aware when we can identify the user).
+        identity, name = self._identity(slack_user)
         result = self.svc.agent.run(
-            text, user=UserProfile(name=slack_user), thread_id=thread_id
+            text, user=UserProfile(name=name, email=identity), thread_id=thread_id
         )
         blocks = [
             {"type": "section", "text": {"type": "mrkdwn", "text": result.get("answer", "")[:2900]}}

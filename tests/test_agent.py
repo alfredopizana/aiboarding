@@ -11,6 +11,41 @@ def test_intent_heuristics():
     assert classify_intent_heuristic("How does billing work?") is None
 
 
+def test_advice_questions_route_to_reasoning_not_docs():
+    # Advice/recommendation questions must reason, even if they mention "docs".
+    assert (
+        classify_intent_heuristic(
+            "¿Qué me recomiendas que haga primero, leer la documentación o agendar reuniones?"
+        )
+        == "question"
+    )
+    assert classify_intent_heuristic("Should I read the docs first or ship a task?") == "question"
+
+
+def test_plan_and_repo_context_feed_the_answer(populated_store, people, audit, tmp_path):
+    from aiboarding.agent.llm import FakeLLM
+    from aiboarding.agent.nodes import Nodes
+    from aiboarding.models import UserProfile
+    from aiboarding.persistence import get_progress_store
+    from aiboarding.plans.generator import PlanGenerator
+
+    progress = get_progress_store("sqlite", tmp_path / "p.db")
+    gen = PlanGenerator(populated_store, people, FakeLLM())
+    user = UserProfile(name="Ada", team="data", email="ada@x.dev")
+    su = progress.upsert_user(user, user.email)
+    progress.save_plan(su.id, gen.generate(user))
+
+    nodes = Nodes(
+        populated_store, people, FakeLLM(), audit, gen,
+        progress=progress, repos=["Noesis-Foundry/core-api"],
+    )
+    assert "90-DAY PLAN" in nodes._plan_context(user)
+    assert "Noesis-Foundry/core-api" in nodes._profile_context(user)
+    # answer_question now surfaces relevant teammates alongside the answer
+    out = nodes.answer_question({"thread_id": "t", "query": "incident response", "user": user})
+    assert "people_matches" in out
+
+
 def test_question_flow_with_citations(agent):
     result = agent.run("How do I set up my development environment?")
     assert result["intent"] == "question"

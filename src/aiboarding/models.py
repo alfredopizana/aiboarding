@@ -85,6 +85,7 @@ class UserProfile(BaseModel):
     role: str = "default"
     team: str = ""
     start_date: str | None = None
+    email: str = ""  # identity used to load the user's saved plan/progress
 
 
 class PlanItem(BaseModel):
