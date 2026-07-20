@@ -83,3 +83,12 @@ class VectorStore:
 
     def count_documents(self) -> int:
         return len({c.doc_id for c in self._chunks.values()})
+
+
+def get_vectorstore(settings, embedder: Embedder):
+    """JSON file store by default; Postgres/pgvector when a database URL is set."""
+    if getattr(settings, "database_url", ""):
+        from aiboarding.knowledge.pgvector_store import PgVectorStore
+
+        return PgVectorStore(settings.database_url, embedder)
+    return VectorStore(settings.vectorstore_dir, embedder)

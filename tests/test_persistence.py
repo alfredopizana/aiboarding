@@ -31,6 +31,29 @@ def test_get_progress_store_unknown_backend(tmp_path):
         get_progress_store("mongo", tmp_path / "x.db")
 
 
+def test_pg_url_normalization():
+    from aiboarding.knowledge.pgvector_store import _psycopg_url
+    from aiboarding.persistence.store import pg_sqlalchemy_url
+
+    # SQLAlchemy needs the +psycopg driver; both Railway URL styles normalize.
+    assert pg_sqlalchemy_url("postgres://u:p@h:5432/db") == "postgresql+psycopg://u:p@h:5432/db"
+    assert pg_sqlalchemy_url("postgresql://u:p@h:5432/db") == "postgresql+psycopg://u:p@h:5432/db"
+    # psycopg wants the plain libpq URL (no +driver).
+    assert _psycopg_url("postgresql+psycopg://u:p@h/db") == "postgresql://u:p@h/db"
+    assert _psycopg_url("postgres://u:p@h/db") == "postgresql://u:p@h/db"
+
+
+def test_vectorstore_factory_defaults_to_json(tmp_path):
+    from aiboarding.knowledge.embeddings import HashingEmbedder
+    from aiboarding.knowledge.vectorstore import VectorStore, get_vectorstore
+
+    class _S:
+        database_url = ""
+        vectorstore_dir = tmp_path / "vs"
+
+    assert isinstance(get_vectorstore(_S(), HashingEmbedder()), VectorStore)
+
+
 def test_sqlite_backend_type(store):
     assert isinstance(store, SQLiteProgressStore)
 

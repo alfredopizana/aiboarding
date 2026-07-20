@@ -9,13 +9,25 @@ included `Dockerfile` + `scripts/railway_start.sh`.
 2. On <https://railway.app> → **New Project → Deploy from GitHub repo** → pick
    `aiboarding`. Railway detects the `Dockerfile` and builds it.
 
-## 2. Add a Volume (required — the filesystem is otherwise ephemeral)
+## 2. Choose where state lives
 
-Service → **Settings → Volumes → New Volume** → mount path **`/data`**.
+**Option A — SQLite + a Volume (simplest, single instance).**
+Service → **Settings → Volumes → New Volume** → mount path **`/data`**. Persists
+the SQLite DB, the JSON vector store, and the audit trail across redeploys.
+Works great for one instance; it does not scale to multiple replicas.
 
-This persists the SQLite DB (users/plans/progress), the vector store, and the
-audit trail across redeploys. Without it, every deploy wipes user data and you'd
-re-ingest each time.
+**Option B — Postgres + pgvector (recommended, stateless & scalable).**
+1. In the project → **New → Database → Add PostgreSQL**. Railway injects
+   `DATABASE_URL` into your service automatically (reference it under Variables
+   if needed: `${{Postgres.DATABASE_URL}}`).
+2. That's it: when `DATABASE_URL` is set, AIboarding puts **both** the relational
+   data (users/plans/progress/history) **and** the document embeddings
+   (pgvector) in Postgres. The app becomes stateless — no Volume needed, and you
+   can scale to multiple replicas.
+   - The `vector` extension is created automatically on first boot (Railway's
+     Postgres role allows `CREATE EXTENSION`).
+   - Only the audit trail stays file-based; mount a small `/data` volume if you
+     want it to survive redeploys, otherwise it's fine to let it reset.
 
 ## 3. Set environment variables
 
@@ -29,6 +41,7 @@ Service → **Variables** → add (values from your local `.env`):
 | `CONFLUENCE_API_TOKEN` | `ATATT...` |
 | `GITHUB_TOKEN` | `github_pat_...` |
 | `GITHUB_REPOS` | `Noesis-Foundry/core-api,Noesis-Foundry/web-app,...` |
+| `DATABASE_URL` | *(Option B)* injected automatically when you add Railway Postgres — reference `${{Postgres.DATABASE_URL}}` if it's a separate service |
 | `AIBOARDING_UI_PASSWORD` | a password (protects the public URL — **recommended**) |
 | `AIBOARDING_SHOW_AUDIT_BUTTON` | `true` / `false` (optional) |
 | `AIBOARDING_LANGSMITH_TRACING` | `true` + `AIBOARDING_LANGSMITH_API_KEY` (optional) |

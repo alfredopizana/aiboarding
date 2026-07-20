@@ -7,7 +7,7 @@ WORKDIR /app
 # the layer caches when only data/scripts change.
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --no-cache-dir ".[ui]"
+RUN pip install --no-cache-dir ".[ui,postgres]"
 
 # Baked-in, non-user data (the people directory + offline sample docs).
 COPY data/people.yaml ./data/people.yaml

@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Persistence (users, plans, progress)
     progress_backend: str = "sqlite"  # sqlite | firebase (future)
     db_path: Path = Path("./data/aiboarding.db")
+    # When set (e.g. Railway injects DATABASE_URL), Postgres backs BOTH the
+    # relational store and the vector store (pgvector) — the app becomes stateless.
+    database_url: str = ""
 
     # Tracing (LangSmith)
     langsmith_tracing: bool = False

@@ -108,27 +108,36 @@ class ProgressStore(ABC):
     def clear_history(self, user_id: str) -> int: ...
 
 
-# ── SQLite implementation ───────────────────────────────────────────────────
-class SQLiteProgressStore(ProgressStore):
-    def __init__(self, db_path: str | Path):
-        # Resolve to an absolute path so the DB location is independent of the
-        # process CWD (Streamlit launches in a subprocess whose cwd may differ).
-        db_path = Path(db_path).expanduser().resolve()
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.engine = create_engine(
-            f"sqlite:///{db_path}",
-            connect_args={"check_same_thread": False, "timeout": 30},
-        )
+def pg_sqlalchemy_url(url: str) -> str:
+    """Normalize a Railway/Heroku-style URL to a SQLAlchemy+psycopg3 URL."""
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://") :]
+    return url
 
-        # WAL mode + a busy timeout make concurrent access (Streamlit reruns,
-        # multiple sessions) robust and avoid spurious readonly/locked errors.
-        @event.listens_for(self.engine, "connect")
-        def _pragmas(dbapi_conn, _record):  # pragma: no cover - trivial
-            cur = dbapi_conn.cursor()
-            cur.execute("PRAGMA journal_mode=WAL")
-            cur.execute("PRAGMA busy_timeout=5000")
-            cur.close()
 
+# ── SQL implementation (SQLite or Postgres via one SQLAlchemy engine) ────────
+class SQLProgressStore(ProgressStore):
+    """SQLModel-backed store over any SQLAlchemy URL (SQLite file or Postgres)."""
+
+    def __init__(self, url: str):
+        if url.startswith("sqlite"):
+            self.engine = create_engine(
+                url, connect_args={"check_same_thread": False, "timeout": 30}
+            )
+
+            # WAL + busy timeout make concurrent SQLite access (Streamlit reruns)
+            # robust and avoid spurious readonly/locked errors.
+            @event.listens_for(self.engine, "connect")
+            def _pragmas(dbapi_conn, _record):  # pragma: no cover - trivial
+                cur = dbapi_conn.cursor()
+                cur.execute("PRAGMA journal_mode=WAL")
+                cur.execute("PRAGMA busy_timeout=5000")
+                cur.close()
+        else:
+            # Postgres (or any server DB): pre-ping to survive idle disconnects.
+            self.engine = create_engine(url, pool_pre_ping=True)
         SQLModel.metadata.create_all(self.engine)
 
     def upsert_user(self, profile: UserProfile, email: str) -> StoredUser:
@@ -275,7 +284,22 @@ def _to_item(rec: PlanItemRecord) -> StoredItem:
     )
 
 
-def get_progress_store(backend: str, db_path: str | Path) -> ProgressStore:
+class SQLiteProgressStore(SQLProgressStore):
+    """SQLite convenience: builds an absolute file URL from a path."""
+
+    def __init__(self, db_path: str | Path):
+        # Absolute path so the DB location is independent of the process CWD
+        # (Streamlit launches in a subprocess whose cwd may differ).
+        db_path = Path(db_path).expanduser().resolve()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        super().__init__(f"sqlite:///{db_path}")
+
+
+def get_progress_store(
+    backend: str, db_path: str | Path, database_url: str = ""
+) -> ProgressStore:
+    if database_url:  # Postgres (Railway) — takes precedence for a stateless app
+        return SQLProgressStore(pg_sqlalchemy_url(database_url))
     if backend == "sqlite":
         return SQLiteProgressStore(db_path)
     # Future: if backend == "firebase": return FirebaseProgressStore(...)

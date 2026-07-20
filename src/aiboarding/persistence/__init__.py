@@ -8,6 +8,7 @@ without touching callers.
 from aiboarding.persistence.store import (
     ProgressStore,
     SQLiteProgressStore,
+    SQLProgressStore,
     StoredItem,
     StoredMessage,
     StoredPlan,
@@ -18,6 +19,7 @@ from aiboarding.persistence.store import (
 __all__ = [
     "ProgressStore",
     "SQLiteProgressStore",
+    "SQLProgressStore",
     "StoredItem",
     "StoredMessage",
     "StoredPlan",
