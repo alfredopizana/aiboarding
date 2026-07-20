@@ -105,16 +105,21 @@ st.set_page_config(page_title="AIboarding", page_icon="🚀", layout="wide")
 
 svc = get_services()
 
-# Optional password gate for shared/hosted deployments. Open when unset.
+# Login wall for shared/hosted deployments — protects your API keys/tokens from
+# misuse on a public URL. Active only when AIBOARDING_UI_PASSWORD is set.
 if svc.settings.ui_password and not st.session_state.get("authed"):
-    st.title("🔒 AIboarding")
-    st.caption("Demo protegida — ingresa la contraseña para continuar.")
-    pw = st.text_input("Contraseña", type="password")
-    if pw and pw == svc.settings.ui_password:
-        st.session_state["authed"] = True
-        st.rerun()
-    elif pw:
-        st.error("Contraseña incorrecta.")
+    _, mid, _ = st.columns([1, 1.4, 1])
+    with mid:
+        st.title("🔒 AIboarding")
+        st.caption("Demo protegida. Ingresa la contraseña para continuar.")
+        with st.form("login", clear_on_submit=True):
+            pw = st.text_input("Contraseña", type="password")
+            if st.form_submit_button("Entrar", use_container_width=True, type="primary"):
+                if pw == svc.settings.ui_password:
+                    st.session_state["authed"] = True
+                    st.rerun()
+                else:
+                    st.error("Contraseña incorrecta.")
     st.stop()
 
 with st.sidebar:
