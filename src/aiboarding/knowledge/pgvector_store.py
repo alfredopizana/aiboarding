@@ -24,6 +24,17 @@ def _psycopg_url(url: str) -> str:
     return url.replace("postgresql+psycopg://", "postgresql://")
 
 
+# Railway's public proxy can black-hole idle/half-open TCP connections; without
+# these a connect() or query can hang for minutes and pin a worker thread.
+_CONNECT_KWARGS = {
+    "connect_timeout": 10,
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 3,
+}
+
+
 class PgVectorStore:
     def __init__(self, url: str, embedder: Embedder):
         import numpy as np  # noqa: F401  (ensures the extra is installed)
@@ -33,7 +44,7 @@ class PgVectorStore:
         self.url = _psycopg_url(url)
         # Bootstrap: create the `vector` extension with a plain connection first —
         # register_vector() below needs the type to already exist.
-        with psycopg.connect(self.url) as conn:
+        with psycopg.connect(self.url, **_CONNECT_KWARGS) as conn:
             conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
             conn.commit()
         # Determine embedding dimensionality from the active embedder.
@@ -60,7 +71,7 @@ class PgVectorStore:
         import psycopg
         from pgvector.psycopg import register_vector
 
-        conn = psycopg.connect(self.url)
+        conn = psycopg.connect(self.url, **_CONNECT_KWARGS)
         register_vector(conn)
         return conn
 

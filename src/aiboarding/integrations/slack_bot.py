@@ -158,17 +158,35 @@ class SlackBot:
                 return
             client.send_socket_mode_response(SocketModeResponse(envelope_id=req.envelope_id))
             event = req.payload.get("event", {})
-            if event.get("type") not in ("app_mention", "message") or event.get("bot_id"):
+            if event.get("bot_id") or event.get("subtype"):
                 return
-            out = self.handle_message(
-                text=event.get("text", ""),
-                slack_user=event.get("user", "unknown"),
-                channel=event.get("channel", ""),
-                ts=event.get("ts", ""),
-            )
+            # A channel mention arrives as BOTH app_mention and message — keep only
+            # app_mention there; plain message events count only in DMs.
+            etype = event.get("type")
+            if etype != "app_mention" and not (
+                etype == "message" and event.get("channel_type") == "im"
+            ):
+                return
+            thread_ts = event.get("thread_ts", event.get("ts"))
+            try:
+                out = self.handle_message(
+                    text=event.get("text", ""),
+                    slack_user=event.get("user", "unknown"),
+                    channel=event.get("channel", ""),
+                    ts=event.get("ts", ""),
+                )
+            except Exception as exc:  # noqa: BLE001 — free the worker and surface the error
+                logger.exception("handle_message failed")
+                web.chat_postMessage(
+                    channel=event["channel"],
+                    thread_ts=thread_ts,
+                    text=f"⚠️ Hubo un error procesando tu pregunta ({type(exc).__name__}). "
+                    "Intenta de nuevo en un momento.",
+                )
+                return
             web.chat_postMessage(
                 channel=event["channel"],
-                thread_ts=event.get("thread_ts", event.get("ts")),
+                thread_ts=thread_ts,
                 text=out["text"][:3000],
                 blocks=out["blocks"],
             )
@@ -176,6 +194,12 @@ class SlackBot:
         socket.socket_mode_request_listeners.append(handle)
         logger.info("Slack bot connected (Socket Mode). Ctrl+C to stop.")
         socket.connect()
-        import signal
+        import threading
 
-        signal.pause()
+        # Not signal.pause(): stray signals (e.g. SIGCHLD when a traced run shells
+        # out) wake pause() and would exit the bot; Event().wait() only stops on
+        # Ctrl+C (KeyboardInterrupt).
+        try:
+            threading.Event().wait()
+        except KeyboardInterrupt:
+            logger.info("Slack bot stopped.")

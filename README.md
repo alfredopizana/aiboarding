@@ -35,34 +35,51 @@ aiboarding ui                 # web app → http://localhost:8501
 For real answers, set OpenAI + your connectors in `.env` (see **Configuration**), then
 `aiboarding ingest --source all`.
 
-## Interfaces / useful commands
+## Running the project (day-to-day)
 
 ```bash
-# Web app (Streamlit SPA): chat, plan + progress checklist, people, admin/audit
-aiboarding ui                                   # http://localhost:8501
+source .venv/bin/activate            # always first
+docker start aiboarding-pg           # if using Postgres/pgvector (DATABASE_URL set in .env)
+aiboarding info                      # sanity check: provider, docs_indexed, chunks, people
+```
 
-# Slack bot (Socket Mode — needs pip install ".[slack]" + tokens)
-aiboarding slack                                # @bot ask… | plan | progreso | done 3
+If `docs_indexed` is 0 (fresh Postgres, wiped store), populate the knowledge base first:
 
-# REST API
-aiboarding serve                                # http://127.0.0.1:8000/docs
+```bash
+aiboarding ingest --source all       # real connectors: confluence + github + gdrive
+```
 
-# CLI
+Then launch whichever interface you need (each is a separate process; they share the same data):
+
+```bash
+aiboarding ui                        # Web app  → http://localhost:8501
+aiboarding slack                     # Slack bot (Socket Mode, no public URL needed)
+aiboarding serve                     # REST API → http://127.0.0.1:8000/docs
+```
+
+More CLI:
+
+```bash
 aiboarding ask "¿Qué leo primero, docs o agendo reuniones?"
 aiboarding plan --name "Ana López" --team data --output plan.md
 aiboarding people "security training"
-aiboarding ingest --source all                  # confluence + github + gdrive (excludes local)
-aiboarding ingest --source local --path ./data/sample_docs
-aiboarding audit thr_xxxxxxxxxxxx               # trace of one interaction
-aiboarding info                                 # active config + store/people stats
-
-# Push data at runtime (no connector; same URI updates in place)
+aiboarding ingest --source local --path ./data/sample_docs   # sample docs (excluded from 'all')
+aiboarding audit thr_xxxxxxxxxxxx    # trace of one interaction
 aiboarding add-doc --title "Parking Policy" --file ./policy.md
 aiboarding add-person --id jane.doe --name "Jane Doe" --role SRE --team devops --slack @janed
 ```
 
 > `--source all` ingests the **real** connectors (confluence, gdrive, github). The local sample
 > docs are excluded from `all` to avoid duplicating content; ingest them with `--source local`.
+
+### Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| Answers have **no citations / no Confluence refs** | The active store is empty. `DATABASE_URL` set ⇒ Postgres is the store (JSON file is ignored, and vice versa). Check `aiboarding info` → `docs_indexed`; if 0, run `aiboarding ingest --source all`. |
+| Changed `.env` but behavior didn't change | Streamlit caches services — **restart** `aiboarding ui` (and `aiboarding slack`) after any `.env` change. |
+| Slack warns `missing_scope: users:read` | Harmless (falls back to Slack id). To share plan/progress with the web UI by email, add `users:read` + `users:read.email` scopes and reinstall the Slack app. |
+| Switched embeddings (hashing↔openai) | Vector dims changed — wipe and re-ingest: `rm -rf data/vectorstore` or `DROP TABLE doc_chunks` on Postgres. |
 
 ## Data sources (Phase 1)
 
